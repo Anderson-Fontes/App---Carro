@@ -1,4 +1,5 @@
 /// Funções puras de formatação e datas (sem dependências externas).
+library;
 
 String _milhar(int n) {
   final s = n.abs().toString();

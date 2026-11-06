@@ -140,8 +140,37 @@ class Validators {
   /// Código de 6 a 10 dígitos enviado por e-mail na recuperação de senha.
   static String? codigo(String? v) =>
       RegExp(r'^\d{6,10}$').hasMatch(sanitizar(v))
+          ? null
+          : 'Informe o código numérico recebido por e-mail.';
+
+  /// Aceita o link ORIGINAL do email, somente do projeto configurado.
+  /// O token ainda será validado e consumido pelo Supabase (uma única vez).
+  static String? tokenRecuperacao(String? entrada, String projetoUrl) {
+    final uri = Uri.tryParse(sanitizar(entrada));
+    final projeto = Uri.tryParse(projetoUrl);
+    if (uri == null ||
+        projeto == null ||
+        uri.scheme != 'https' ||
+        uri.host != projeto.host ||
+        uri.port != projeto.port ||
+        uri.userInfo.isNotEmpty ||
+        uri.path != '/auth/v1/verify' ||
+        uri.queryParameters['type'] != 'recovery') {
+      return null;
+    }
+    final token = uri.queryParameters['token'];
+    if (token == null || !RegExp(r'^[A-Za-z0-9_-]{20,256}$').hasMatch(token)) {
+      return null;
+    }
+    return token;
+  }
+
+  static String? codigoOuLink(String? entrada, String projetoUrl) => codigo(
+                  entrada) ==
+              null ||
+          tokenRecuperacao(entrada, projetoUrl) != null
       ? null
-      : 'Informe o código numérico recebido por e-mail.';
+      : 'Cole o link original de recuperação do e-mail ou informe o código.';
 
   // ------------------------------------------------ Intervalos do plano
 

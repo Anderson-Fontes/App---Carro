@@ -9,7 +9,7 @@ trocar de celular não exige recadastrar nada.
 
 ## O que o app faz
 
-- Criar conta, entrar, sair, **recuperar senha por código no e-mail**, alterar senha e **excluir a conta** (apaga todos os dados e fotos).
+- Criar conta, entrar, sair, **recuperar senha pelo link ou código do e-mail**, alterar senha e **excluir a conta** (apaga todos os dados e fotos).
 - Garagem com vários veículos (carro/moto), resumo de pendências e *pull-to-refresh*.
 - Cadastrar e **editar** veículo; atualizar quilometragem (nunca diminui).
 - Painel com semáforo por item: óleo e filtro, pneus, freios, bateria, IPVA e seguro.
@@ -30,43 +30,37 @@ trocar de celular não exige recadastrar nada.
 3. Confira a segurança: rode a consulta de verificação que está no final do `schema.sql`
    (comentada). Toda tabela deve aparecer com `rls_ativo = true` e ao menos 1 política.
 4. Em **Authentication** (os nomes dos menus podem variar um pouco):
-   - **Sign In / Providers > Email**: mantenha habilitado. Para testar rápido você pode
-     desligar **Confirm email**; para a versão final, deixe ligado.
-   - **Password settings**: coloque o tamanho mínimo da senha em **8**.
-   - **Email Templates > Reset Password**: inclua `{{ .Token }}` no corpo do e-mail
-     (ex.: `Seu código: {{ .Token }}`). O app usa esse código para redefinir a senha.
-   - O e-mail padrão do Supabase tem limite baixo de envios por hora. Serve para a
-     demonstração; para uso real configure um SMTP próprio.
+   - **Sign In / Providers > Email**: mantenha habilitado. Para os testes, recomendamos
+     manter **Confirm email** ligado e confirmar as contas antes da apresentação.
+   - **Password settings**: mínimo **8**, **Letters and digits** e **Secure password change** ativo.
+   - Recuperação: o email padrão envia um **link**. No celular, mantenha o botão
+     "Reset password" pressionado, copie seu endereço **sem abri-lo** e cole no app.
+     O app valida o domínio do projeto e usa `verifyOTP(tokenHash: ..., type: recovery)`.
+     O servidor valida expiração e uso único; o aplicativo não abre o URL colado.
+     Se configurar SMTP próprio, também pode incluir `{{ .Token }}` no template;
+     o código numérico continua aceito. O painel gratuito atualmente restringe
+     a edição de templates sem SMTP próprio ou plano Pro.
+   - O serviço padrão de email tem restrições de destinatários e limite baixo
+     de envio. Para contas fora da equipe do Supabase, configure SMTP próprio.
+     Não desative a confirmação de email como solução de produção.
 5. Em **Project Settings > API** copie a **Project URL** e a chave **anon public**.
    **Nunca** use a chave `service_role` no app.
 
 ### 2. Preparar o projeto Flutter
 
-Se ainda não tem o projeto base:
+A estrutura Android já está incluída, com HTTPS obrigatório, backups desativados
+ e desugaring configurado. Use Flutter **3.38.5** e Java **17**.
 
-```bash
-flutter create --org br.fatec --project-name manutencao_veiculos --platforms android manutencao_veiculos
-```
+Na pasta `manutencao_veiculos`, copie `env.public.json` para `env.json` para usar
+o projeto da dupla. Para outro projeto, use `env.example.json` e informe
+`SUPABASE_URL` e `SUPABASE_ANON_KEY`. A segunda aceita a chave **publishable**
+ou a chave legada **anon**. Nunca use senha do banco, `service_role` ou `sb_secret_`.
+O `.gitignore` já exclui `env.json` e arquivos de assinatura.
+`env.public.json` contém somente URL e chave publicável, projetada para ser
+distribuída com o aplicativo. Nenhuma senha ou chave administrativa está nele.
+A proteção dos dados é feita pelo login e pelas políticas RLS no servidor.
 
-1. Descompacte este zip em qualquer pasta.
-2. **Apague** as pastas `lib` e `test` do projeto criado (para não sobrar arquivo da
-   versão antiga, como `database_helper.dart`) e copie para dentro dele: `lib/`, `test/`,
-   `pubspec.yaml`, `analysis_options.yaml`, `env.example.json` e a pasta `supabase/`.
-3. Substitua `android/app/src/main/AndroidManifest.xml` por `android_patches/AndroidManifest.xml`
-   (agora inclui a permissão `INTERNET`).
-4. Se ainda não fez, ative o *core library desugaring* em `android/app/build.gradle(.kts)`
-   (mesmo passo da versão 1: `isCoreLibraryDesugaringEnabled = true` e a dependência
-   `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")`).
-5. Crie o arquivo `env.json` (copie de `env.example.json`) com a URL e a chave anon:
-
-   ```json
-   {
-     "SUPABASE_URL": "https://SEU-PROJETO.supabase.co",
-     "SUPABASE_ANON_KEY": "sua-chave-anon-public"
-   }
-   ```
-
-   Adicione `env.json` ao `.gitignore` (uma linha com o nome do arquivo) para não subir ao GitHub.
+O `pubspec.lock` fixa as dependências testadas. Não o apague.
 
 ### 3. Rodar, testar e gerar o APK
 
@@ -100,7 +94,8 @@ sem uso. Se o app parar de conectar, reative o projeto no painel (antes da apres
 | CSV injection | Células iniciadas por `= + - @` recebem apóstrofo | `core/csv_export.dart` |
 | Erros que expõem detalhes | Mensagens genéricas; sem `print` | todas as telas, `core/erros.dart` |
 | Dados do usuário após sair | Notificações e controle de alertas do aparelho são limpos | `core/auth_service.dart` |
-| Código no APK | Build com `--obfuscate`; chaves via `--dart-define`, fora do código | passo 3 |
+| Sessão no aparelho | Tokens em armazenamento criptografado (`flutter_secure_storage`) | `core/sessao_segura.dart` |
+| Código no APK | Obfuscação dificulta a leitura; a chave pública continua extraível e a proteção dos dados depende de Auth + RLS | passo 3 |
 
 ## Testes
 
@@ -115,8 +110,42 @@ dos dois, mas o app só mostra os do usuário logado.
 ## Limitações e próximos passos
 
 - O app agora precisa de internet para ler e gravar dados (os alertas já agendados continuam funcionando offline).
-- A sessão do login é guardada pelo `supabase_flutter` no armazenamento do app. Para endurecer,
-  é possível guardar em `flutter_secure_storage`.
+- A sessão usa `flutter_secure_storage` com armazenamento criptografado no Android; a senha não é persistida pelo app.
 - Fuso das notificações fixo em `America/Sao_Paulo`.
 - Exportação é CSV na área de transferência; arquivo/PDF compartilhável seria o próximo passo.
 - Login social (Google) e autenticação em dois fatores (MFA) ficam como evolução.
+
+
+## Gerar APK no GitHub
+
+O workflow `.github/workflows/android.yml` analisa o código e executa os testes.
+Em pushes para `main` ou `feat/nuvem-seguranca-apk`, e em execução manual,
+compila o APK após os testes passarem. Pull requests executam somente os testes.
+
+1. O workflow usa `env.public.json` da dupla. Para mudar o destino sem editar
+   o arquivo, um administrador pode configurar em
+   **Settings > Secrets and variables > Actions > Variables**:
+   - `SUPABASE_URL`: URL do projeto.
+   - `SUPABASE_ANON_KEY`: chave **publishable** (ou **anon**), nunca chave administrativa.
+2. Em **Actions > Testes e APK Android**, abra a execução (ou **Run workflow**).
+3. Ao terminar, baixe **Artifacts > minha-garagem-apk**, extraia e instale o APK.
+
+Este APK é para demonstração acadêmica: compilação release, mas assinatura de
+**debug** do ambiente de build. Não é uma assinatura de publicação na Play Store.
+Entre builds a assinatura pode mudar; nesse caso é necessário desinstalar a versão
+anterior. Os registros ficam na nuvem e voltam após o login.
+Para distribuição contínua, configure uma chave de assinatura estável em Secrets.
+
+## Verificação da segurança no banco
+
+Execute `supabase/testar_seguranca.sql` inteiro no SQL Editor. Ele cria dois
+usuários temporários, simula suas permissões e testa leitura/escrita entre contas,
+acesso anônimo, vínculo de manutenção e regra de quilometragem. Também verifica
+RLS nas quatro tabelas e o bucket privado de 5 MB. Ao final usa `ROLLBACK`, sem
+manter usuários ou dados de teste. O resultado esperado começa com `PASSOU`.
+
+O teste de sessão usa um armazenamento simulado: verifica persistência e remoção,
+mas a criptografia e os fluxos de câmera/notificações precisam de teste no Android.
+O bloqueio de 30 segundos no cliente é apenas complementar; os limites efetivos
+contra abuso ficam no Supabase Auth. Pedir senha atual na interface para excluir
+conta não é uma verificação adicional na RPC: ela autoriza pelo JWT do próprio usuário.

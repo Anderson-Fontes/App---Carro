@@ -1,0 +1,24 @@
+# Credenciais e arquivos locais
+env.json
+.env
+.env.*
+!env.example.json
+*.jks
+*.keystore
+key.properties
+local.properties
+
+# Flutter / Android
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.gradle/
+.idea/
+*.iml
+android/captures/
+android/.kotlin/
+
+# Sistema
+.DS_Store
+Thumbs.db

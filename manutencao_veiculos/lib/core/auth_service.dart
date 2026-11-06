@@ -5,6 +5,7 @@ import 'erros.dart';
 import 'foto_storage.dart';
 import 'notificacao_service.dart';
 import 'validators.dart';
+import 'supabase_config.dart';
 
 /// Falha de autenticação com mensagem JÁ pronta para mostrar ao usuário.
 class AuthFalha implements Exception {
@@ -90,11 +91,19 @@ class AuthService {
     required String novaSenha,
   }) async {
     try {
-      await _auth.verifyOTP(
-        email: Validators.normalizarEmail(email),
-        token: Validators.sanitizar(codigo),
-        type: OtpType.recovery,
-      );
+      final tokenHash = Validators.tokenRecuperacao(codigo, SupabaseConfig.url);
+      if (tokenHash != null) {
+        await _auth.verifyOTP(tokenHash: tokenHash, type: OtpType.recovery);
+      } else {
+        if (Validators.codigo(codigo) != null) {
+          throw const AuthFalha('Link ou código de recuperação inválido.');
+        }
+        await _auth.verifyOTP(
+          email: Validators.normalizarEmail(email),
+          token: Validators.sanitizar(codigo),
+          type: OtpType.recovery,
+        );
+      }
       await _auth.updateUser(UserAttributes(password: novaSenha));
     } on AuthException catch (e) {
       throw AuthFalha(_traduzir(e, 'Não foi possível redefinir a senha.'));
@@ -108,8 +117,9 @@ class AuthService {
     required String nova,
   }) async {
     final email = usuario?.email;
-    if (email == null)
+    if (email == null) {
       throw const AuthFalha('Sessão expirada. Entre novamente.');
+    }
     try {
       await _auth.signInWithPassword(email: email, password: atual);
       await _auth.updateUser(UserAttributes(password: nova));
@@ -128,8 +138,9 @@ class AuthService {
   /// Apaga TODOS os dados do usuário (fotos, registros e a própria conta).
   Future<void> excluirConta({required String senha}) async {
     final email = usuario?.email;
-    if (email == null)
+    if (email == null) {
       throw const AuthFalha('Sessão expirada. Entre novamente.');
+    }
     try {
       await _auth.signInWithPassword(email: email, password: senha);
       await FotoStorage.instance.removerTodas();

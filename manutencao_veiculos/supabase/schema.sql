@@ -149,7 +149,8 @@ create policy "configuracoes_dono" on public.configuracoes
 
 -- Privilégios mínimos: visitante (anon) não tem acesso a nada.
 revoke all on public.veiculos, public.itens_plano, public.manutencoes,
-              public.configuracoes, public.ultimas_manutencoes from anon;
+              public.configuracoes, public.ultimas_manutencoes from public, anon;
+grant usage on schema public to authenticated;
 grant select, insert, update, delete
   on public.veiculos, public.itens_plano, public.manutencoes,
      public.configuracoes to authenticated;

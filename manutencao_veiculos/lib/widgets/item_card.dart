@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/status_calculator.dart';
 import '../core/status_ui.dart';
+import '../models/item_plano.dart';
 
 class ItemCard extends StatelessWidget {
   const ItemCard({

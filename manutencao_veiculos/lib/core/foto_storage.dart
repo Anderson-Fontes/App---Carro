@@ -92,14 +92,14 @@ class FotoStorage {
 
   /// Apaga todas as fotos do usuário (usado ao excluir a conta).
   Future<void> removerTodas() async {
-    try {
-      final uid = _uid();
-      for (var i = 0; i < 50; i++) {
-        final itens = await _api.list(path: uid);
-        if (itens.isEmpty) break;
-        await _api.remove(itens.map((f) => '$uid/${f.name}').toList());
-      }
-    } catch (_) {}
+    final uid = _uid();
+    // Sempre lê a primeira página: os arquivos removidos saem da listagem.
+    // Uma falha deve interromper a exclusão da conta, permitindo tentar de novo.
+    while (true) {
+      final itens = await _api.list(path: uid);
+      if (itens.isEmpty) return;
+      await _api.remove(itens.map((f) => '$uid/${f.name}').toList());
+    }
   }
 
   String? _extensaoPeloConteudo(List<int> b) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/auth_service.dart';
 import '../core/validators.dart';
+import '../core/supabase_config.dart';
 
 /// Recuperação de senha em 2 etapas, tudo dentro do app:
 ///  1) informa o e-mail e recebe um CÓDIGO numérico;
@@ -54,7 +55,7 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
       await AuthService.instance.pedirCodigoRecuperacao(_email.text);
       if (!mounted) return;
       setState(() => _etapa = 2);
-      _aviso('Se o e-mail estiver cadastrado, enviamos um código.');
+      _aviso('Se o e-mail estiver cadastrado, enviamos a recuperação.');
     } on AuthFalha catch (e) {
       _aviso(e.mensagem);
     } finally {
@@ -97,7 +98,7 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Informe o e-mail da sua conta. Enviaremos um código '
+                      'Informe o e-mail da sua conta. Enviaremos um e-mail '
                       'para você criar uma nova senha.',
                     ),
                     const SizedBox(height: 16),
@@ -117,7 +118,7 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                     FilledButton(
                       onPressed: _carregando ? null : _enviarCodigo,
                       child: Text(
-                        _carregando ? 'Enviando...' : 'Enviar código',
+                        _carregando ? 'Enviando...' : 'Enviar recuperação',
                       ),
                     ),
                   ],
@@ -129,18 +130,23 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Digite o código enviado para ${_email.text}.'),
+                    Text('No e-mail enviado para ${_email.text}, pressione e '
+                        'segure o botão "Reset password" e copie o link, sem '
+                        'abri-lo. Cole abaixo. Se recebeu um código, digite-o.'),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _codigo,
-                      keyboardType: TextInputType.number,
-                      maxLength: 10,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      maxLength: 2048,
                       decoration: const InputDecoration(
-                        labelText: 'Código',
+                        labelText: 'Link ou código do e-mail',
                         border: OutlineInputBorder(),
                         counterText: '',
                       ),
-                      validator: Validators.codigo,
+                      validator: (v) =>
+                          Validators.codigoOuLink(v, SupabaseConfig.url),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -183,10 +189,9 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: _carregando
-                          ? null
-                          : () => setState(() => _etapa = 1),
-                      child: const Text('Reenviar código'),
+                      onPressed:
+                          _carregando ? null : () => setState(() => _etapa = 1),
+                      child: const Text('Reenviar e-mail'),
                     ),
                   ],
                 ),

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/auth_service.dart';
 import 'core/notificacao_service.dart';
 import 'core/supabase_config.dart';
+import 'core/sessao_segura.dart';
 import 'screens/garagem_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -13,7 +14,8 @@ Future<void> main() async {
   if (SupabaseConfig.configurado) {
     await Supabase.initialize(
       url: SupabaseConfig.url,
-      anonKey: SupabaseConfig.anonKey,
+      publishableKey: SupabaseConfig.anonKey,
+      authOptions: FlutterAuthClientOptions(localStorage: SessaoSegura()),
     );
   }
   await NotificacaoService.instance.init();
